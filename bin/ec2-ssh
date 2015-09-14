@@ -4,17 +4,19 @@ set -e
 
 usage() {
     cat<<EOF
-Usage: ec2-ssh [-k KEY] [-s SECRET] [-r REGION] [-t TAG] <instance-name>
+Usage: ec2-ssh [-k KEY] [-s SECRET] [-r REGION] [-t TAG] [-p PORT] [-i IDENTITY_FILE] <instance-name>
 
 Open an ssh connection to an EC2 instance where <instance-name>=tag:value.
 The 'tag:' portion of <instance-name> is optional, and defaults to 'Name'.
 For a list of instances, run ec2-host without any paramteres
 
-  -h            display this help and exit
-  -k, KEY       Amazon EC2 Key, defaults to \$AWS_ACCESS_KEY_ID
-  -s, SECRET    Amazon EC2 Secret, defaults to \$AWS_SECRET_ACCESS_KEY
-  -r, REGION    Amazon EC2 Region, defaults to us-east-1
-  -t, TAG       Tag name for searching, defaults to 'Name'
+  -h                 display this help and exit
+  -k, KEY            Amazon EC2 Key, defaults to \$AWS_ACCESS_KEY_ID
+  -s, SECRET         Amazon EC2 Secret, defaults to \$AWS_SECRET_ACCESS_KEY
+  -r, REGION         Amazon EC2 Region, defaults to us-east-1
+  -t, TAG            Tag name for searching, defaults to 'Name'
+  -p, PORT           Set SSH port value (default 22)
+  -i, IDENTITY_FILE  Amazon EC2 Identity File, defaults to \$HOME/.ssh/id_rsa
 EOF
 }
 
@@ -23,13 +25,17 @@ test $# -eq 0 && { usage; exit; }
 
 # Process options
 cmd="ec2-host"
-while getopts ":hk:s:r:t:" opt; do
+port=22
+identity_file="~/.ssh/id_rsa"
+while getopts ":hk:s:r:t:p:i:" opt; do
     case $opt in
         h  ) usage; exit 1;;
         k  ) cmd="$cmd -k $OPTARG";;
         s  ) cmd="$cmd -s $OPTARG";;
         r  ) cmd="$cmd -r $OPTARG";;
         t  ) cmd="$cmd -t $OPTARG";;
+        p  ) port="$OPTARG";;
+        i  ) identity_file="$OPTARG";;
         \? ) usage; exit 1
     esac
 done
@@ -67,4 +73,4 @@ cmd="echo \\\". ~/.bashrc && PS1='\[\e]0;$inst: \w\\\a\]\[\\\033[01;32m\]$inst\[
 if test "${@:2}"; then
     cmd="${@:2}"
 fi
-test -n "$host" && echo "Connecting to $host." && exec sh -c "ssh -t $user@$host \"$cmd\""
+test -n "$host" && echo "Connecting to $host:$port." && exec sh -c "ssh -t -p $port -i $identity_file $user@$host \"$cmd\""

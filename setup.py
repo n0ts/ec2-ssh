@@ -43,6 +43,7 @@ Changelog
 * 1.1.1 - Add line echoing host before establishing SSH connection
 * 1.2 - Merged pull requests to add region and tag support
 * 1.2.1 - Fix issue when ec2-host finds one offline instance with same name as an online instance
+* 1.2.2 - Add support for identity file and port
 """
 
 
