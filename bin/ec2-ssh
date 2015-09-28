@@ -4,7 +4,7 @@ set -e
 
 usage() {
     cat<<EOF
-Usage: ec2-ssh [-k KEY] [-s SECRET] [-r REGION] [-t TAG] [-p PORT] [-i IDENTITY_FILE] <instance-name>
+Usage: ec2-ssh [-k KEY] [-s SECRET] [-r REGION] [-t TAG] [-p PORT] [-i IDENTITY_FILE] <instance-name> [shell command]
 
 Open an ssh connection to an EC2 instance where <instance-name>=tag:value.
 The 'tag:' portion of <instance-name> is optional, and defaults to 'Name'.
@@ -16,7 +16,8 @@ For a list of instances, run ec2-host without any paramteres
   -r, REGION         Amazon EC2 Region, defaults to us-east-1
   -t, TAG            Tag name for searching, defaults to 'Name'
   -p, PORT           Set SSH port value (default 22)
-  -i, IDENTITY_FILE  Amazon EC2 Identity File, defaults to \$HOME/.ssh/id_rsa
+  -i, IDENTITY_FILE  Amazon EC2 Identity File, defaults to \$HOME/.ssh/id_rsa or \$TARGET_IDENTITYFILE
+  -u, HOST_USER      Amazon EC2 User, defaults to ec2-user or \$TARGET_HOST_USER
 EOF
 }
 
@@ -26,7 +27,12 @@ test $# -eq 0 && { usage; exit; }
 # Process options
 cmd="ec2-host"
 port=22
-identity_file="~/.ssh/id_rsa"
+if test -z "$TARGET_IDENTITYFILE"; then
+    identity_file="~/.ssh/id_rsa"
+else
+    identity_file=$TARGET_IDENTITYFILE
+fi
+
 while getopts ":hk:s:r:t:p:i:" opt; do
     case $opt in
         h  ) usage; exit 1;;
@@ -47,9 +53,13 @@ IFS="@"; declare -a hostparts=($1)
 inst="${hostparts[1]}"
 user="${hostparts[0]}"
 
-if [ -z "$inst" ]; then
-  inst="$1"
-  user="ubuntu"
+if test -z "$inst"; then
+    inst="$1"
+    if [ -z "$TARGET_HOST_USER" ]; then
+        user="ubuntu"
+    else
+        user=$TARGET_HOST_USER
+    fi
 fi
 
 # support tag:value format for identifying instances
@@ -58,7 +68,7 @@ IFS=":"; declare -a tagparts=($inst)
 tag="${tagparts[0]}"
 value="${tagparts[1]}"
 
-if [ -z "$value" ]; then
+if test -z "$value"; then
     value="$inst"
 else
     cmd="$cmd -t $tag"
@@ -69,7 +79,8 @@ host=$(eval "$cmd $inst")
 
 # pass all other parameters (${@:2}) to ssh allowing
 # things like: ec2-ssh nginx uptime
-cmd="echo \\\". ~/.bashrc && PS1='\[\e]0;$inst: \w\\\a\]\[\\\033[01;32m\]$inst\[\\\033[00m\]:\[\\\033[01;34m\]\w\[\\\033[00m\]\\\$ '\\\" > ~/.ec2sshrc; /bin/bash --rcfile .ec2sshrc -i"
+##cmd="echo \\\". ~/.bashrc && PS1='\[\e]0;$inst: \w\\\a\]\[\\\033[01;32m\]$inst\[\\\033[00m\]:\[\\\033[01;34m\]\w\[\\\033[00m\]\\\$ '\\\" > ~/.ec2sshrc; /bin/bash --rcfile .ec2sshrc -i"
+cmd="/bin/bash"
 if test "${@:2}"; then
     cmd="${@:2}"
 fi
