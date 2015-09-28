@@ -84,4 +84,6 @@ cmd="/bin/bash"
 if test "${@:2}"; then
     cmd="${@:2}"
 fi
-test -n "$host" && echo "Connecting to $host:$port." && exec sh -c "ssh -t -p $port -i $identity_file $user@$host \"$cmd\""
+test -n "$host" &&
+    echo "Connecting to $host:$port." &&
+    exec sh -c "ssh -t -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' -o 'IdentitiesOnly yes' -p $port -i $identity_file $user@$host \"$cmd\""
